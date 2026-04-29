@@ -1,100 +1,153 @@
 import streamlit as st
+import matplotlib.pyplot as plt
 import pandas as pd
-import streamlit.components.v1 as components
+
+st.set_page_config(layout="wide")
+
+# -----------------------------
+# TITLE
+# -----------------------------
 
 st.title("Pile Cap Reaction Calculator")
 
-st.write("Pile Capacity = 40 ton / pile")
-st.write("Total Load = 150 ton")
+st.success(
+"""
+จงหาแรงปฏิกิริยาของเสาเข็ม เนื่องจากเกิดการเยื้องศูนย์ดังแสดงในรูป
+เมื่อกำหนดให้เสาเข็มรับน้ำหนักปลอดภัย 40 ตัน/ต้น
+และเกิดน้ำหนักกระทำต่อฐานราก เท่ากับ 150 ตัน
+"""
+)
 
-P = st.number_input("Load P (ton)", value=150.0)
-ex = st.number_input("ex (cm)", value=0.0)
-ey = st.number_input("ey (cm)", value=0.0)
+# -----------------------------
+# INPUT
+# -----------------------------
 
-capacity = 40
+st.subheader("📌 ข้อมูลนำเข้า")
 
-piles = [
-{"pile":1,"x":-60,"y":95},
-{"pile":2,"x":60,"y":95},
-{"pile":3,"x":-60,"y":-95},
-{"pile":4,"x":60,"y":-95}
-]
+c1,c2,c3 = st.columns(3)
 
-n=len(piles)
+with c1:
+    P = st.number_input("น้ำหนักรวม P (ตัน)", value=150.0)
 
-Mx=P*ey
-My=P*ex
+with c2:
+    ex = st.number_input("ระยะเยื้องศูนย์ X (cm)", value=2.0)
 
-sumx2=sum(p["x"]**2 for p in piles)
-sumy2=sum(p["y"]**2 for p in piles)
+with c3:
+    ey = st.number_input("ระยะเยื้องศูนย์ Y (cm)", value=3.0)
 
-results=[]
+st.info("ขนาดฐานราก (Pile Cap) = 120 cm (X) × 190 cm (Y)")
 
-for p in piles:
+# -----------------------------
+# PILE DATA
+# -----------------------------
 
-    R=(P/n)+(Mx*p["y"]/sumy2)+(My*p["x"]/sumx2)
+piles = {
+"P1":(-60,95),
+"P2":(60,95),
+"P3":(-60,-95),
+"P4":(60,-95)
+}
+
+n = len(piles)
+
+Ix = sum([y**2 for x,y in piles.values()])
+Iy = sum([x**2 for x,y in piles.values()])
+
+# -----------------------------
+# CALCULATION
+# -----------------------------
+
+data=[]
+
+for name,(x,y) in piles.items():
+
+    R = P/n + (P*ey*x)/Iy + (P*ex*y)/Ix
 
     status="SAFE"
-    if R>capacity:
+
+    if R>40:
         status="OVER"
 
-    results.append({
-    "Pile":p["pile"],
-    "Reaction (ton)":round(R,2),
-    "Status":status
-    })
+    data.append([name,x,y,round(R,2),status])
 
-df=pd.DataFrame(results)
+df = pd.DataFrame(
+data,
+columns=["เสาเข็ม","X","Y","แรงปฏิกิริยา (ตัน)","สถานะ"]
+)
 
-st.subheader("Pile Reaction")
+# -----------------------------
+# LAYOUT
+# -----------------------------
 
-st.dataframe(df)
+left,right = st.columns([1,1])
 
-# ---------------- DIAGRAM ----------------
+# -----------------------------
+# TABLE
+# -----------------------------
 
-st.subheader("Pile Cap Diagram")
+with left:
 
-svg="""
-<svg width="600" height="600">
+    st.subheader("📊 ผลการคำนวณแรงปฏิกิริยาเสาเข็ม")
 
-<!-- pile cap -->
-<rect x="150" y="150" width="300" height="300"
-stroke="black" stroke-width="3" fill="none"/>
+    st.dataframe(df,use_container_width=True)
 
-<!-- center lines -->
-<line x1="300" y1="150" x2="300" y2="450"
-stroke="red" stroke-dasharray="5,5"/>
+    maxR = df["แรงปฏิกิริยา (ตัน)"].max()
 
-<line x1="150" y1="300" x2="450" y2="300"
-stroke="red" stroke-dasharray="5,5"/>
+    if maxR > 40:
+        st.error(f"แรงปฏิกิริยามากที่สุด = {maxR} ตัน/ต้น  (เกินค่าปลอดภัย 40)")
+    else:
+        st.success(f"แรงปฏิกิริยามากที่สุด = {maxR} ตัน/ต้น  (SAFE)")
 
-<!-- piles -->
-<circle cx="210" cy="210" r="12" fill="pink" stroke="black"/>
-<circle cx="390" cy="210" r="12" fill="pink" stroke="black"/>
-<circle cx="210" cy="390" r="12" fill="pink" stroke="black"/>
-<circle cx="390" cy="390" r="12" fill="pink" stroke="black"/>
+    st.markdown("### สรุปผล")
 
-<!-- pile offsets -->
-<text x="180" y="190">2 cm</text>
-<text x="400" y="190">3 cm</text>
-<text x="180" y="410">1 cm</text>
-<text x="400" y="410">6 cm</text>
+    st.write(f"- ค่ารับน้ำหนักปลอดภัยเสาเข็ม = 40 ตัน/ต้น")
+    st.write(f"- น้ำหนักกระทำรวม P = {P} ตัน")
+    st.write(f"- ex = {ex} cm")
+    st.write(f"- ey = {ey} cm")
 
-<!-- dimension top -->
-<line x1="150" y1="120" x2="450" y2="120"
-stroke="black"/>
+    if maxR > 40:
+        st.error("❌ ผลการออกแบบ : ไม่ปลอดภัย")
+    else:
+        st.success("✔ ผลการออกแบบ : ปลอดภัย")
 
-<text x="200" y="100">35 cm</text>
-<text x="285" y="100">120 cm</text>
-<text x="380" y="100">35 cm</text>
 
-<!-- vertical dimension -->
-<line x1="120" y1="150" x2="120" y2="450"
-stroke="black"/>
+# -----------------------------
+# DRAW DIAGRAM
+# -----------------------------
 
-<text x="80" y="310">190 cm</text>
+with right:
 
-</svg>
-"""
+    st.subheader("🗺 แผนผังฐานรากและตำแหน่งเสาเข็ม")
 
-components.html(svg,height=620)
+    fig,ax = plt.subplots()
+
+    width = 120
+    height = 190
+
+    rect = plt.Rectangle((-60,-95),120,190,fill=False,linewidth=2)
+
+    ax.add_patch(rect)
+
+    for name,(x,y) in piles.items():
+
+        ax.scatter(x,y,s=300)
+
+        ax.text(x,y-10,name,ha="center")
+
+    ax.axhline(0,linestyle="--")
+    ax.axvline(0,linestyle="--")
+
+    ax.text(0,100,"120 cm",ha="center")
+    ax.text(-70,0,"190 cm",rotation=90)
+
+    ax.set_xlim(-80,80)
+    ax.set_ylim(-120,120)
+
+    ax.set_aspect("equal")
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    st.pyplot(fig)
+
+st.caption("หมายเหตุ : ระยะทั้งหมดหน่วย cm")
