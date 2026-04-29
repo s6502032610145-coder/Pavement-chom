@@ -1,125 +1,100 @@
 import streamlit as st
-import matplotlib.pyplot as plt
 import pandas as pd
-
-st.set_page_config(page_title="Pile Cap Reaction Calculator", layout="wide")
+import streamlit.components.v1 as components
 
 st.title("Pile Cap Reaction Calculator")
 
-st.markdown("""
-จงหาแรงปฏิกิริยาของเสาเข็ม เนื่องจากเกิดการเยื้องศูนย์ดังแสดงในรูป  
-กำหนดให้เสาเข็มรับน้ำหนักปลอดภัย **40 ตัน/ต้น**  
-และน้ำหนักกระทำต่อฐานราก **150 ตัน**
-""")
+st.write("Pile Capacity = 40 ton / pile")
+st.write("Total Load = 150 ton")
 
-# -----------------------------
-# INPUT
-# -----------------------------
+P = st.number_input("Load P (ton)", value=150.0)
+ex = st.number_input("ex (cm)", value=0.0)
+ey = st.number_input("ey (cm)", value=0.0)
 
-col1,col2,col3 = st.columns(3)
+capacity = 40
 
-with col1:
-    P = st.number_input("น้ำหนักรวม P (ตัน)", value=150.0)
+piles = [
+{"pile":1,"x":-60,"y":95},
+{"pile":2,"x":60,"y":95},
+{"pile":3,"x":-60,"y":-95},
+{"pile":4,"x":60,"y":-95}
+]
 
-with col2:
-    ex = st.number_input("ระยะเยื้องศูนย์ X (cm)", value=2.0)
+n=len(piles)
 
-with col3:
-    ey = st.number_input("ระยะเยื้องศูนย์ Y (cm)", value=3.0)
+Mx=P*ey
+My=P*ex
 
+sumx2=sum(p["x"]**2 for p in piles)
+sumy2=sum(p["y"]**2 for p in piles)
 
-st.info("ขนาดฐานราก = 120 cm (X) × 190 cm (Y)")
+results=[]
 
+for p in piles:
 
-# -----------------------------
-# pile coordinates
-# -----------------------------
+    R=(P/n)+(Mx*p["y"]/sumy2)+(My*p["x"]/sumx2)
 
-piles = {
-"P1":(-60,95),
-"P2":(60,95),
-"P3":(-60,-95),
-"P4":(60,-95)
-}
+    status="SAFE"
+    if R>capacity:
+        status="OVER"
 
-n = len(piles)
+    results.append({
+    "Pile":p["pile"],
+    "Reaction (ton)":round(R,2),
+    "Status":status
+    })
 
-Ix = sum([y**2 for x,y in piles.values()])
-Iy = sum([x**2 for x,y in piles.values()])
+df=pd.DataFrame(results)
 
+st.subheader("Pile Reaction")
 
-# -----------------------------
-# reaction calculation
-# -----------------------------
+st.dataframe(df)
 
-results = []
+# ---------------- DIAGRAM ----------------
 
-for name,(x,y) in piles.items():
+st.subheader("Pile Cap Diagram")
 
-    R = P/n + (P*ey*x)/Iy + (P*ex*y)/Ix
+svg="""
+<svg width="600" height="600">
 
-    status = "SAFE"
-    if R > 40:
-        status = "OVER"
+<!-- pile cap -->
+<rect x="150" y="150" width="300" height="300"
+stroke="black" stroke-width="3" fill="none"/>
 
-    results.append([name,x,y,round(R,2),status])
+<!-- center lines -->
+<line x1="300" y1="150" x2="300" y2="450"
+stroke="red" stroke-dasharray="5,5"/>
 
-df = pd.DataFrame(results,columns=["Pile","X","Y","Reaction (ton)","Status"])
+<line x1="150" y1="300" x2="450" y2="300"
+stroke="red" stroke-dasharray="5,5"/>
 
+<!-- piles -->
+<circle cx="210" cy="210" r="12" fill="pink" stroke="black"/>
+<circle cx="390" cy="210" r="12" fill="pink" stroke="black"/>
+<circle cx="210" cy="390" r="12" fill="pink" stroke="black"/>
+<circle cx="390" cy="390" r="12" fill="pink" stroke="black"/>
 
-# -----------------------------
-# layout
-# -----------------------------
+<!-- pile offsets -->
+<text x="180" y="190">2 cm</text>
+<text x="400" y="190">3 cm</text>
+<text x="180" y="410">1 cm</text>
+<text x="400" y="410">6 cm</text>
 
-left,right = st.columns(2)
+<!-- dimension top -->
+<line x1="150" y1="120" x2="450" y2="120"
+stroke="black"/>
 
-# -----------------------------
-# TABLE
-# -----------------------------
+<text x="200" y="100">35 cm</text>
+<text x="285" y="100">120 cm</text>
+<text x="380" y="100">35 cm</text>
 
-with left:
+<!-- vertical dimension -->
+<line x1="120" y1="150" x2="120" y2="450"
+stroke="black"/>
 
-    st.subheader("ผลการคำนวณ")
+<text x="80" y="310">190 cm</text>
 
-    st.dataframe(df,use_container_width=True)
+</svg>
+"""
 
-    maxR = df["Reaction (ton)"].max()
-
-    if maxR > 40:
-        st.error(f"แรงปฏิกิริยามากที่สุด = {maxR} ตัน/ต้น  (เกิน 40)")
-    else:
-        st.success(f"แรงปฏิกิริยามากที่สุด = {maxR} ตัน/ต้น  (SAFE)")
-
-
-# -----------------------------
-# DIAGRAM
-# -----------------------------
-
-with right:
-
-    st.subheader("แผนผังฐานราก")
-
-    fig,ax = plt.subplots()
-
-    width = 120
-    height = 190
-
-    rect = plt.Rectangle((-60,-95),120,190,fill=False,linewidth=2)
-
-    ax.add_patch(rect)
-
-    for name,(x,y) in piles.items():
-
-        ax.scatter(x,y,s=200)
-
-        ax.text(x,y-10,name,ha='center')
-
-    ax.axhline(0,linestyle="--")
-    ax.axvline(0,linestyle="--")
-
-    ax.set_xlim(-80,80)
-    ax.set_ylim(-120,120)
-
-    ax.set_aspect('equal')
-
-    st.pyplot(fig)
+components.html(svg,height=620)
