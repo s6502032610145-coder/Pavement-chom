@@ -2,22 +2,34 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-st.title("Pile Cap Reaction Calculator")
+st.set_page_config(page_title="Pile Cap Analysis", layout="wide")
+
+st.title("Pile Cap Reaction Analysis")
 
 st.write("Pile Cap Size : 120 cm × 190 cm")
-st.write("Number of piles : 4")
+st.write("Pile Capacity : 40 ton / pile")
 
-# Load input
-P = st.number_input("Total Load P (ton)", value=150.0)
+# -------------------------
+# INPUT
+# -------------------------
 
-# eccentricity
-st.subheader("Eccentricity")
-ex = st.number_input("ex (cm)", value=0.0)
-ey = st.number_input("ey (cm)", value=0.0)
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    P = st.number_input("Total Load P (ton)", value=150.0)
+
+with col2:
+    ex = st.number_input("Eccentricity ex (cm)", value=0.0)
+
+with col3:
+    ey = st.number_input("Eccentricity ey (cm)", value=0.0)
 
 capacity = 40
 
-# pile coordinates
+# -------------------------
+# PILE DATA
+# -------------------------
+
 piles = [
     {"pile":1,"x":-60,"y":95},
     {"pile":2,"x":60,"y":95},
@@ -53,48 +65,73 @@ for p in piles:
 
 df = pd.DataFrame(results)
 
+# -------------------------
+# TABLE
+# -------------------------
+
 st.subheader("Pile Reaction Table")
+
 st.dataframe(df)
 
 max_load = df["Reaction (ton)"].max()
 
-st.write("Maximum pile load =",round(max_load,2),"ton")
-
 if max_load > capacity:
-    st.error("Pile capacity exceeded")
+    st.error(f"Maximum pile load = {round(max_load,2)} ton (OVER CAPACITY)")
 else:
-    st.success("Design is SAFE")
+    st.success(f"Maximum pile load = {round(max_load,2)} ton (SAFE)")
 
-# -----------------------
-# Pile Layout Diagram
-# -----------------------
+# -------------------------
+# PILE CAP DIAGRAM
+# -------------------------
 
-st.subheader("Pile Layout")
+st.subheader("Pile Cap Layout")
 
 fig = go.Figure()
 
+# rectangle pile cap
+cap_x = [-60,60,60,-60,-60]
+cap_y = [-95,-95,95,95,-95]
+
+fig.add_trace(go.Scatter(
+    x=cap_x,
+    y=cap_y,
+    mode="lines",
+    name="Pile Cap"
+))
+
+# piles
 fig.add_trace(go.Scatter(
     x=df["X"],
     y=df["Y"],
     mode="markers+text",
-    text=df["Pile"],
+    text=["P"+str(p) for p in df["Pile"]],
     textposition="top center",
-    marker=dict(size=12)
+    marker=dict(size=12),
+    name="Piles"
 ))
+
+# load arrow
+fig.add_annotation(
+    x=ex,
+    y=ey,
+    ax=0,
+    ay=0,
+    showarrow=True,
+    arrowhead=3
+)
 
 fig.update_layout(
     xaxis_title="X (cm)",
     yaxis_title="Y (cm)",
-    title="Pile Cap Layout",
-    width=600,
-    height=500
+    width=700,
+    height=600
 )
 
 st.plotly_chart(fig)
 
-# -----------------------
-# Load Graph
-# -----------------------
+# -------------------------
+# LOAD GRAPH
+# -------------------------
 
 st.subheader("Pile Load Distribution")
 
@@ -107,8 +144,7 @@ fig2.add_bar(
 
 fig2.update_layout(
     xaxis_title="Pile",
-    yaxis_title="Reaction (ton)",
-    title="Pile Load"
+    yaxis_title="Reaction (ton)"
 )
 
 st.plotly_chart(fig2)
