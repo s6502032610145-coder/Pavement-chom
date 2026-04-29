@@ -1,38 +1,66 @@
-# Pile Reaction Calculator (Eccentric Load)
+import streamlit as st
+import pandas as pd
 
-# รับค่าแรงรวม
-P = float(input("กรอกแรงรวม P (ตัน): "))
+st.title("Pile Reaction Analysis")
 
-# ระยะเยื้องศูนย์
-ex = float(input("Eccentricity X (cm): "))
-ey = float(input("Eccentricity Y (cm): "))
+st.write("Pile Cap Size : 120 cm × 190 cm")
+st.write("Number of Piles : 4")
 
-# ตำแหน่งเสาเข็ม (cm)
+# Load
+P = st.number_input("Total Load P (ton)", value=150.0)
+
+capacity = 40
+
+# pile coordinates (cm)
 piles = [
-    {"pile": 1, "x": -60, "y": 95},
-    {"pile": 2, "x": 60, "y": 95},
-    {"pile": 3, "x": -60, "y": -95},
-    {"pile": 4, "x": 60, "y": -95}
+    {"pile":1, "x":-60, "y":95},
+    {"pile":2, "x":60, "y":95},
+    {"pile":3, "x":-60, "y":-95},
+    {"pile":4, "x":60, "y":-95}
 ]
+
+st.subheader("Eccentricity")
+
+ex = st.number_input("ex (cm)", value=0.0)
+ey = st.number_input("ey (cm)", value=0.0)
 
 n = len(piles)
 
-# โมเมนต์
 Mx = P * ey
 My = P * ex
 
-# คำนวณ Σx² และ Σy²
 sum_x2 = sum(p["x"]**2 for p in piles)
 sum_y2 = sum(p["y"]**2 for p in piles)
 
-print("\nผลการคำนวณแรงปฏิกิริยาเสาเข็ม")
-print("----------------------------------")
+results = []
 
 for p in piles:
 
     R = (P/n) + (Mx*p["y"]/sum_y2) + (My*p["x"]/sum_x2)
 
-    print(f"Pile {p['pile']} = {R:.2f} ton")
+    status = "SAFE"
+    if R > capacity:
+        status = "OVER"
 
-    if R > 40:
-        print("  ⚠ เกินกำลังรับ 40 ตัน/ต้น")
+    results.append({
+        "Pile": p["pile"],
+        "X (cm)": p["x"],
+        "Y (cm)": p["y"],
+        "Reaction (ton)": round(R,2),
+        "Status": status
+    })
+
+df = pd.DataFrame(results)
+
+st.subheader("Pile Reaction Result")
+
+st.dataframe(df)
+
+max_load = df["Reaction (ton)"].max()
+
+st.write("Maximum Load on Pile =", round(max_load,2), "ton")
+
+if max_load > capacity:
+    st.error("Pile Capacity Exceeded")
+else:
+    st.success("Design is Safe")
