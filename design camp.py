@@ -1,12 +1,9 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-
-st.set_page_config(page_title="Pile Cap Analysis")
 
 st.title("Pile Cap Reaction Calculator")
 
-st.write("Pile Cap Size : 120 cm × 190 cm")
+st.write("Pile Cap Size : 120 cm x 190 cm")
 st.write("Pile Capacity : 40 ton / pile")
 
 # INPUT
@@ -44,8 +41,8 @@ for p in piles:
 
     results.append({
         "Pile":p["pile"],
-        "X (cm)":p["x"],
-        "Y (cm)":p["y"],
+        "X":p["x"],
+        "Y":p["y"],
         "Reaction (ton)":round(R,2),
         "Status":status
     })
@@ -62,57 +59,25 @@ if max_load > capacity:
 else:
     st.success(f"Maximum pile load = {max_load} ton (SAFE)")
 
-# -----------------------
-# PILE CAP DIAGRAM
-# -----------------------
-
+# simple pile layout
 st.subheader("Pile Layout")
 
-fig = go.Figure()
+layout = """
+      P1           P2
 
-# pile cap rectangle
-fig.add_shape(
-    type="rect",
-    x0=-60, y0=-95,
-    x1=60, y1=95,
-    line=dict(color="black")
-)
+      ●------------●
 
-# piles
-fig.add_trace(go.Scatter(
-    x=df["X (cm)"],
-    y=df["Y (cm)"],
-    mode="markers+text",
-    text=df["Pile"],
-    textposition="top center",
-    marker=dict(size=14)
-))
+      |            |
 
-fig.update_layout(
-    xaxis_title="X (cm)",
-    yaxis_title="Y (cm)",
-    width=600,
-    height=500
-)
+      |   PILE     |
 
-st.plotly_chart(fig)
+      |    CAP     |
 
-# -----------------------
-# LOAD GRAPH
-# -----------------------
+      |            |
 
-st.subheader("Pile Load Distribution")
+      ●------------●
 
-fig2 = go.Figure()
+      P3           P4
+"""
 
-fig2.add_bar(
-    x=df["Pile"],
-    y=df["Reaction (ton)"]
-)
-
-fig2.update_layout(
-    xaxis_title="Pile",
-    yaxis_title="Reaction (ton)"
-)
-
-st.plotly_chart(fig2)
+st.text(layout)
